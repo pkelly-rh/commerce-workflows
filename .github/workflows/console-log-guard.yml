@@ -1,0 +1,30 @@
+name: Console Log Guard
+# Callable from other workflows with "workflow_call"
+on: [workflow_call]
+
+jobs:
+  consoleLogGuard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0 # required for this to work
+
+      # Get the diff between this pull request and the target branch
+      # Grep the console logs with regex
+      # Count the lines with wc -l
+      - name: Count total console logs and set env
+        run: echo "TOTAL_CONSOLE_LOGS=$(git diff  ${{ github.event.pull_request.base.sha }}..${{ github.sha }} | grep console.log\( | wc -l)" >> $GITHUB_ENV
+
+      - name: Test
+        # If total console logs found exceed ZERO then throw an error
+        run: |
+          if [[ ${{env.TOTAL_CONSOLE_LOGS}} > 0 ]]; then
+            echo "STOP! You violated the law!"
+            echo "Detected ${{env.TOTAL_CONSOLE_LOGS}} console.logs in this pull request"
+            echo "Please remove all console.logs"
+            exit 42
+          else
+            echo "Nothing to see here. Move along."
+          fi
